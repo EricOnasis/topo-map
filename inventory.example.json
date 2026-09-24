@@ -1,0 +1,6 @@
+{
+  "routers": [
+    {"name": "core-router", "host": "192.168.88.1", "port": 22, "username": "admin", "password": "changeme"},
+    {"name": "branch-switch", "host": "192.168.88.5", "port": 22, "username": "admin", "password": "changeme"}
+  ]
+}
