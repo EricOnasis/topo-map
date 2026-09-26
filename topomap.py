@@ -3,6 +3,7 @@
 
 Usage:
     python topomap.py inventory.json --json
+    python topomap.py inventory.json --mermaid topology.mmd
 """
 import argparse
 import json
@@ -73,16 +74,42 @@ def build_edges(routers: list) -> list:
     return edges
 
 
+def _mermaid_id(name: str) -> str:
+    """Mermaid node IDs can't contain spaces or most punctuation; sanitize but keep it readable."""
+    return re.sub(r"[^A-Za-z0-9_]", "_", name)
+
+
+def build_mermaid(edges: list) -> str:
+    lines = ["graph LR"]
+    seen_pairs = set()
+    for edge in edges:
+        pair = (edge["from"], edge["to"])
+        reverse = (edge["to"], edge["from"])
+        if pair in seen_pairs or reverse in seen_pairs:
+            continue  # neighbor discovery is symmetric; each link shows up from both sides
+        seen_pairs.add(pair)
+
+        from_id, to_id = _mermaid_id(edge["from"]), _mermaid_id(edge["to"])
+        lines.append(f'    {from_id}["{edge["from"]}"] -- "{edge["interface"]}" --> '
+                     f'{to_id}["{edge["to"]}"]')
+    return "\n".join(lines) + "\n"
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("inventory_file", help="Path to an inventory.json file")
     parser.add_argument("--json", action="store_true", help="Print edges as JSON")
+    parser.add_argument("--mermaid", metavar="FILE", help="Write a Mermaid diagram to FILE")
     args = parser.parse_args()
 
     routers = load_inventory(args.inventory_file)
     edges = build_edges(routers)
 
-    if args.json:
+    if args.mermaid:
+        with open(args.mermaid, "w") as f:
+            f.write(build_mermaid(edges))
+        print(f"Wrote {args.mermaid}")
+    elif args.json:
         print(json.dumps(edges, indent=2))
     else:
         for edge in edges:
